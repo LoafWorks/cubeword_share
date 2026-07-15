@@ -2,14 +2,24 @@
 <!--
   Cubeword smart store redirect.
   Host this single file anywhere static (GitHub Pages is free: put it in a repo,
-  Settings → Pages → deploy from branch, done). The game's share text links here
-  (main.gd SHARE_LINK); visitors get bounced to the right store for their device,
-  and desktop / unknown platforms see both store buttons as a fallback.
+  Settings → Pages → deploy from branch, done). The game's share text + the
+  daily "update required" link point here (main.gd SHARE_LINK /
+  main_menu.gd STORE_REDIRECT_URL); visitors are bounced to the right store for
+  their device, and desktop / unknown platforms see the available store buttons.
 
-  ⚠ Before going live:
-  - APP_STORE_URL below is a PLACEHOLDER — replace idXXXXXXXXXX with the real
-    numeric Apple app ID once the App Store listing exists. Until then iOS
-    visitors fall through to the fallback page (do NOT ship a dead redirect).
+  ⚠ THIS FILE IS ONLY A TEMPLATE. The live page is hosted from a SEPARATE repo
+  (loafworks.github.io/cubeword_share). Editing this file changes nothing for
+  users until you copy it into that repo and let GitHub Pages redeploy.
+
+  iOS destination (IOS_URL):
+  - DURING BETA: a TestFlight public link, "https://testflight.apple.com/join/<CODE>"
+    (App Store Connect → your app → TestFlight → Public Link). Opens the
+    TestFlight app so testers can install/update the latest beta build.
+  - WHEN LIVE: swap to the App Store listing,
+    "https://apps.apple.com/app/id<REAL_NUMERIC_ID>". Nothing else changes.
+  - The button label auto-switches (TestFlight vs App Store) based on the URL.
+  - Until IOS_URL is set, iOS visitors see a short message — they are NEVER
+    shown a Google Play button (that was the bug this version fixes).
   - The Play package id is case-sensitive: com.Loafworks.Cubeword.
 -->
 <html lang="en">
@@ -25,7 +35,7 @@
          min-height: 100vh; text-align: center; gap: 24px; padding: 24px; box-sizing: border-box; }
   h1 { margin: 0; font-size: 2.4rem; }
   p { margin: 0; opacity: 0.8; }
-  a.store { display: inline-block; padding: 14px 28px; border-radius: 12px; background: #3a3f4d;
+  a.store { display: none; padding: 14px 28px; border-radius: 12px; background: #3a3f4d;
             color: #fff; text-decoration: none; font-size: 1.1rem; }
   a.store:hover { background: #4a5062; }
 </style>
@@ -33,24 +43,41 @@
 <body>
 <h1>Cubeword</h1>
 <p>A 3D word game — spell words on a cube of letters.</p>
+<p id="msg" style="display:none"></p>
 <a class="store" id="play" href="https://play.google.com/store/apps/details?id=com.Loafworks.Cubeword">Get it on Google Play</a>
-<a class="store" id="ios" href="https://apps.apple.com/app/idXXXXXXXXXX" style="display:none">Download on the App Store</a>
+<a class="store" id="ios" href="#">Download on the App Store</a>
 <script>
   var PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.Loafworks.Cubeword";
-  var APP_STORE_URL = "";   // set to "https://apps.apple.com/app/id<REAL_ID>" when the iOS listing is live
+  // TestFlight public link during beta, App Store URL once live. See the header.
+  var IOS_URL = "https://testflight.apple.com/join/XbKmBVDb";   // e.g. "https://testflight.apple.com/join/XXXXXXXX"
   var ua = navigator.userAgent || "";
   // iPadOS 13+ masquerades as macOS; the touch check catches it.
   var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   var isAndroid = /Android/i.test(ua);
-  if (APP_STORE_URL) {
-    var iosLink = document.getElementById("ios");
-    iosLink.href = APP_STORE_URL;
-    iosLink.style.display = "inline-block";
+  var playBtn = document.getElementById("play");
+  var iosBtn = document.getElementById("ios");
+  var msg = document.getElementById("msg");
+
+  function show(el) { el.style.display = "inline-block"; }
+  var iosIsTestFlight = /testflight\.apple\.com/i.test(IOS_URL);
+  iosBtn.textContent = iosIsTestFlight ? "Get the beta on TestFlight" : "Download on the App Store";
+
+  if (isIOS) {
+    // An iOS visitor must NEVER be offered Google Play.
+    if (IOS_URL) {
+      iosBtn.href = IOS_URL;
+      location.replace(IOS_URL);   // opens TestFlight (beta) or the App Store (live)
+    } else {
+      msg.textContent = "The iOS version is coming soon.";
+      msg.style.display = "block";
+    }
+  } else if (isAndroid) {
+    location.replace(PLAY_STORE_URL);
+  } else {
+    // Desktop / unknown: show whichever destination(s) are available, no auto-redirect.
+    show(playBtn);
+    if (IOS_URL) { iosBtn.href = IOS_URL; show(iosBtn); }
   }
-  if (isAndroid) location.replace(PLAY_STORE_URL);
-  else if (isIOS && APP_STORE_URL) location.replace(APP_STORE_URL);
-  // Anything else (desktop, unknown, iOS before the listing exists): stay on
-  // this page and show the store button(s).
 </script>
 </body>
 </html>
